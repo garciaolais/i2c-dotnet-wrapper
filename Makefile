@@ -4,7 +4,7 @@ LDFLAGS = -shared  # linking flags
 RM = rm -f  # rm command
 TARGET_LIB = i2c-dotnet.so # target lib
 
-SRCS = bmp180.c # source files
+SRCS = i2c-dotnet.c # source files
 OBJS = $(SRCS:.c=.o)
 
 all: ${TARGET_LIB}
