@@ -3,11 +3,85 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/ioctl.h>
-#include <math.h>
 #include <linux/i2c-dev.h>
 #include <stdint.h>
+#include <errno.h>
 
-int reg_write_byte(int handle, uint8_t devaddr, uint8_t regaddr,
+int read_byte_data(int fd, uint8_t addr, uint8_t regaddr)
+{
+        uint8_t* content; 
+	struct i2c_rdwr_ioctl_data iocall;    // structure pass to i2c driver
+	struct i2c_msg i2c_msgs[2];
+
+	iocall.nmsgs = 2;
+	iocall.msgs = i2c_msgs;
+
+	i2c_msgs[0].addr = addr;
+	i2c_msgs[0].flags = 0; //write
+	i2c_msgs[0].buf = (char*) &regaddr;
+	i2c_msgs[0].len = 1;
+
+	i2c_msgs[1].addr = addr;
+	i2c_msgs[1].flags = I2C_M_RD; //READ
+	i2c_msgs[1].buf = (char*) content;
+	i2c_msgs[1].len = 1;
+
+	if (ioctl(fd, I2C_RDWR, (unsigned long) &iocall) < 0) {
+		printf("error during reg_read_byte()\n");
+		return -1;
+	}
+	return *content;
+}
+
+int reg_read_byte(int fd, uint8_t addr, uint8_t regaddr,
+		uint8_t* content) {
+	struct i2c_rdwr_ioctl_data iocall;    // structure pass to i2c driver
+	struct i2c_msg i2c_msgs[2];
+
+	iocall.nmsgs = 2;
+	iocall.msgs = i2c_msgs;
+
+	i2c_msgs[0].addr = addr;
+	i2c_msgs[0].flags = 0; //write
+	i2c_msgs[0].buf = (char*) &regaddr;
+	i2c_msgs[0].len = 1;
+
+	i2c_msgs[1].addr = addr;
+	i2c_msgs[1].flags = I2C_M_RD; //READ
+	i2c_msgs[1].buf = (char*) content;
+	i2c_msgs[1].len = 1;
+
+	if (ioctl(fd, I2C_RDWR, (unsigned long) &iocall) < 0) {
+		printf("error during reg_read_byte()\n");
+		return -1;
+	}
+	return 0;
+}
+
+int write_byte_data(int fd, uint8_t addr, uint8_t cmd, uint8_t val) {
+	struct i2c_rdwr_ioctl_data iocall;    // structure pass to i2c driver
+	struct i2c_msg i2c_msgs;
+	uint8_t data[2];
+
+	data[0] = cmd;
+	data[1] = val;
+
+	iocall.nmsgs = 1;
+	iocall.msgs = &i2c_msgs;
+
+	i2c_msgs.addr = addr;
+	i2c_msgs.flags = 0; 
+	i2c_msgs.buf = (char*) data;
+	i2c_msgs.len = sizeof(data);
+
+	if (ioctl(fd, I2C_RDWR, (unsigned long) &iocall) < 0) {
+		printf("%s: error\n", __func__);
+		return -1;
+	}
+	return 0;
+}
+
+int reg_write_byte(int fd, uint8_t addr, uint8_t regaddr,
 		uint8_t content) {
 	struct i2c_rdwr_ioctl_data iocall;    // structure pass to i2c driver
 	struct i2c_msg message;
@@ -18,63 +92,63 @@ int reg_write_byte(int handle, uint8_t devaddr, uint8_t regaddr,
 
 	iocall.nmsgs = 1;
 	iocall.msgs = &message;
-	message.addr = devaddr;
+	message.addr = addr;
 	message.flags = 0; //write
 	message.buf = (char*) buffer;
 	message.len = sizeof(buffer);
-	if (ioctl(handle, I2C_RDWR, (unsigned long) &iocall) < 0) {
-		printf("error during reg_write_byte()\n");
+	if (ioctl(fd, I2C_RDWR, (unsigned long) &iocall) < 0) {
+		printf("%s:%s \n", __func__, strerror(errno));
 		return -1;
 	}
 	return 0;
 }
 
-int reg_read_byte(int handle, uint8_t devaddr, uint8_t regaddr,
+int reg_read_byte_(int fd, uint8_t addr, uint8_t regaddr,
 		uint8_t* content) {
 	struct i2c_rdwr_ioctl_data iocall;    // structure pass to i2c driver
-	struct i2c_msg messages[2];
+	struct i2c_msg i2c_msgs[2];
 
 	iocall.nmsgs = 2;
-	iocall.msgs = messages;
+	iocall.msgs = i2c_msgs;
 
-	messages[0].addr = devaddr;
-	messages[0].flags = 0; //write
-	messages[0].buf = (char*) &regaddr;
-	messages[0].len = 1;
+	i2c_msgs[0].addr = addr;
+	i2c_msgs[0].flags = 0; //write
+	i2c_msgs[0].buf = (char*) &regaddr;
+	i2c_msgs[0].len = 1;
 
-	messages[1].addr = devaddr;
-	messages[1].flags = I2C_M_RD; //READ
-	messages[1].buf = (char*) content;
-	messages[1].len = 1;
+	i2c_msgs[1].addr = addr;
+	i2c_msgs[1].flags = I2C_M_RD; //READ
+	i2c_msgs[1].buf = (char*) content;
+	i2c_msgs[1].len = 2;
 
-	if (ioctl(handle, I2C_RDWR, (unsigned long) &iocall) < 0) {
-		printf("error during reg_read_byte()\n");
+	if (ioctl(fd, I2C_RDWR, (unsigned long) &iocall) < 0) {
+		printf("%s:%s \n", __func__, strerror(errno));
 		return -1;
 	}
 	return 0;
 }
 
-int reg_read_short(int handle, uint8_t devaddr, uint8_t regaddr,
+int reg_read_short(int fd, uint8_t addr, uint8_t regaddr,
 		uint16_t* content) {
 	struct i2c_rdwr_ioctl_data iocall;    // structure pass to i2c driver
-	struct i2c_msg messages[2];
+	struct i2c_msg i2c_msgs[2];
 	uint8_t buffer[2];
 
 	iocall.nmsgs = 2;
-	iocall.msgs = messages;
+	iocall.msgs = i2c_msgs;
 
-	messages[0].addr = devaddr;
-	messages[0].flags = 0; //write
-	messages[0].buf = (char*) &regaddr;
-	messages[0].len = 1;
+	i2c_msgs[0].addr = addr;
+	i2c_msgs[0].flags = 0; //write
+	i2c_msgs[0].buf = (char*) &regaddr;
+	i2c_msgs[0].len = 1;
 
-	messages[1].addr = devaddr;
-	messages[1].flags = I2C_M_RD; //READ
-	messages[1].buf = (char*) buffer;
-	messages[1].len = 2;
+	i2c_msgs[1].addr = addr;
+	i2c_msgs[1].flags = I2C_M_RD; //READ
+	i2c_msgs[1].buf = (char*) buffer;
+	i2c_msgs[1].len = 2;
 
-	if (ioctl(handle, I2C_RDWR, (unsigned long) &iocall) < 0) {
-		printf("error during reg_read_short()\n");
+	if (ioctl(fd, I2C_RDWR, (unsigned long) &iocall) < 0) {
+		printf("%s:%s \n", __func__, strerror(errno));
 		return -1;
 	}
 
@@ -82,64 +156,29 @@ int reg_read_short(int handle, uint8_t devaddr, uint8_t regaddr,
 	return 0;
 }
 
-int reg_read_24(int handle, uint8_t devaddr, uint8_t regaddr, int32_t* content) {
+int reg_read_24(int fd, uint8_t addr, uint8_t regaddr, int32_t* content) {
 	struct i2c_rdwr_ioctl_data iocall;    // structure pass to i2c driver
-	struct i2c_msg messages[2];
+	struct i2c_msg i2c_msgs[2];
 	uint8_t buffer[3];
 
 	iocall.nmsgs = 2;
-	iocall.msgs = messages;
+	iocall.msgs = i2c_msgs;
 
-	messages[0].addr = devaddr;
-	messages[0].flags = 0; //write
-	messages[0].buf = (char*) &regaddr;
-	messages[0].len = 1;
+	i2c_msgs[0].addr = addr;
+	i2c_msgs[0].flags = 0; //write
+	i2c_msgs[0].buf = (char*) &regaddr;
+	i2c_msgs[0].len = 1;
 
-	messages[1].addr = devaddr;
-	messages[1].flags = I2C_M_RD; //READ
-	messages[1].buf = (char*) buffer;
-	messages[1].len = 3;
+	i2c_msgs[1].addr = addr;
+	i2c_msgs[1].flags = I2C_M_RD; //READ
+	i2c_msgs[1].buf = (char*) buffer;
+	i2c_msgs[1].len = 3;
 
-	if (ioctl(handle, I2C_RDWR, (unsigned long) &iocall) < 0) {
-		printf("error during reg_read_short()\n");
+	if (ioctl(fd, I2C_RDWR, (unsigned long) &iocall) < 0) {
+		printf("%s:%s \n", __func__, strerror(errno));
 		return -1;
 	}
 
 	*content = (buffer[0] << 16) | (buffer[1] << 8) | buffer[2];
 	return 0;
-}
-
-typedef struct {
-	int16_t AC1; // =   408;
-	int16_t AC2; // =   -72;
-	int16_t AC3; // =-14383;
-	uint16_t AC4; //=32741;
-	uint16_t AC5; //=32757;
-	uint16_t AC6; //=23153;
-	int16_t B1; //=   6190;
-	int16_t B2; //=      4;
-	int16_t MB; //= -32768;
-	int16_t MC; //=  -8711;
-	int16_t MD; //=   2868;
-} bmp180_calibration;
-
-#define BMP180_I2C_ADDR (0x77)
-
-int bmp180_read_cal(int fd, bmp180_calibration* cal) {
-	int res = 0;
-	res |= reg_read_short(fd, BMP180_I2C_ADDR, 0xaa, (uint16_t*) &cal->AC1);
-	res |= reg_read_short(fd, BMP180_I2C_ADDR, 0xac, (uint16_t*) &cal->AC2);
-	res |= reg_read_short(fd, BMP180_I2C_ADDR, 0xae, (uint16_t*) &cal->AC3);
-	res |= reg_read_short(fd, BMP180_I2C_ADDR, 0xb0, (uint16_t*) &cal->AC4);
-	res |= reg_read_short(fd, BMP180_I2C_ADDR, 0xb2, (uint16_t*) &cal->AC5);
-	res |= reg_read_short(fd, BMP180_I2C_ADDR, 0xb4, (uint16_t*) &cal->AC6);
-
-	res |= reg_read_short(fd, BMP180_I2C_ADDR, 0xb6, (uint16_t*) &cal->B1);
-	res |= reg_read_short(fd, BMP180_I2C_ADDR, 0xb8, (uint16_t*) &cal->B2);
-
-	res |= reg_read_short(fd, BMP180_I2C_ADDR, 0xba, (uint16_t*) &cal->MB);
-	res |= reg_read_short(fd, BMP180_I2C_ADDR, 0xbc, (uint16_t*) &cal->MC);
-	res |= reg_read_short(fd, BMP180_I2C_ADDR, 0xbe, (uint16_t*) &cal->MD);
-
-	return res;
 }
