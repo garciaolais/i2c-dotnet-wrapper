@@ -6,6 +6,7 @@
 #include <linux/i2c-dev.h>
 #include <stdint.h>
 #include <errno.h>
+#include <string.h>
 
 int read_byte_data(int fd, uint8_t addr, uint8_t regaddr)
 {
